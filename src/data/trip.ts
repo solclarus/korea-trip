@@ -135,7 +135,7 @@ export const trip: Trip = {
     { id: 'w7', at: '2026-10-16T13:23', amount: 29900, currency: 'KRW', category: 'food', item: 'エムブロトンカツ', payment: 'wowpass', placeId: 'mbro-sinchon',
       memo: '13:18 に ₩25,900 で決済 → 取消して ₩29,900 で再決済' },
     { id: 'r3', at: '2026-10-16T14:12', endAt: '2026-10-16T14:23', amount: 1500, currency: 'KRW', category: 'transport', item: 'バス', payment: 'tmoney', moveId: 'm3a', memo: '乗車 14:12 → 下車 14:23。₩1,500 はバス運賃' },
-    { id: 'w8', at: '2026-10-16T16:16', amount: 12000, currency: 'KRW', category: 'food', item: '食品', payment: 'wowpass' },
+    { id: 'w8', at: '2026-10-16T16:16', amount: 12000, currency: 'KRW', category: 'food', item: '塩パンの店', payment: 'wowpass', memo: '店名・場所は未確認（本人の申告）' },
     // 1回の決済 ₩7,700 を自分の分と友人の分に分けて記録
     { id: 'w9', at: '2026-10-16T16:26', amount: 4500, currency: 'KRW', category: 'cafe', item: 'ICED Caffe Mocha (L)', payment: 'wowpass', placeId: 'ediya-museum',
       memo: 'EDIYA COFFEE（レシートあり・決済は ₩7,700 で1回）' },
