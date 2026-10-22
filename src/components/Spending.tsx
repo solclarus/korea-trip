@@ -10,6 +10,8 @@ import {
   sumByCurrency,
   toJpy,
   toMin,
+  moveLabel,
+  stationsLabel,
   walletOf,
   type Model,
 } from '../lib/core';
@@ -100,7 +102,7 @@ export function ExpenseList({
   const whereOf = (e: Expense) => {
     if (e.placeId) return model.place(e.placeId).name;
     const m = model.trip.moves.find((m) => m.id === e.moveId);
-    return m ? `${model.place(m.from).name} → ${model.place(m.to).name}` : '';
+    return m ? stationsLabel(m) || moveLabel(m) : '';
   };
 
   if (sorted.length === 0) return <p className="muted small">支払いはありません</p>;

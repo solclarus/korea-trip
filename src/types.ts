@@ -40,6 +40,8 @@ export interface Transfer {
   received: number;
   placeId?: string;
   note?: string;
+  /** キャッシュバックなどのおまけの入金。お金の流れにだけ出し、旅程には出さない */
+  cashback?: boolean;
 }
 
 /** 地図上の地点 */
@@ -78,6 +80,12 @@ export interface RailLeg {
   to: string;
 }
 
+/** 駅・停留所の表示名 */
+export interface Station {
+  name: string;
+  nameKo: string;
+}
+
 /** 地点間の移動 */
 export interface Move {
   id: string;
@@ -88,6 +96,8 @@ export interface Move {
   mode: MoveMode;
   /** 路線名・便名など */
   line?: string;
+  /** 公共交通の乗車駅 → （乗換駅）→ 降車駅。旅程に表示する */
+  stations?: Station[];
   /** 出発・到着時刻が未確定で、推定値を入れている */
   estimated?: boolean;
   /** 鉄道で移動した場合の乗車区間（乗り換えごとに1つ）。経路生成スクリプトが線路の形を使う */

@@ -14,6 +14,13 @@ export const CATEGORIES: { id: CategoryId; label: string; color: string }[] = [
   { id: 'friend', label: '友人の分', color: 'var(--series-8)' },
   { id: 'other', label: 'その他', color: 'var(--neutral)' },
 ];
+/** 移動の呼び名（例：「地下鉄・2号線」） */
+export const moveLabel = (m: Move) => [MODE_LABEL[m.mode], m.line].filter(Boolean).join('・');
+
+/** 公共交通の乗車駅 → 降車駅（例：「乙支路入口 → 新林」） */
+export const stationsLabel = (m: Move, lang: 'ja' | 'ko' = 'ja') =>
+  (m.stations ?? []).map((s) => (lang === 'ja' ? s.name : s.nameKo)).join(' → ');
+
 /** 「English · 한국어」の副表記。正式名称が英語で name と同じなら英語は省く */
 export const altNames = (p: Place) => [p.nameEn !== p.name ? p.nameEn : null, p.nameKo].filter(Boolean).join(' · ');
 
@@ -205,7 +212,7 @@ export const buildModel = (trip: Trip): Model => {
         (e) => e.placeId === v.placeId && toMin(e.at) >= toMin(v.arrive) && toMin(e.at) <= toMin(v.depart),
       ),
       transfers: trip.transfers.filter(
-        (t) => t.at && t.placeId === v.placeId && toMin(t.at) >= toMin(v.arrive) && toMin(t.at) <= toMin(v.depart),
+        (t) => !t.cashback && t.at && t.placeId === v.placeId && toMin(t.at) >= toMin(v.arrive) && toMin(t.at) <= toMin(v.depart),
       ),
     })),
     ...trip.moves.map((m) => ({
@@ -234,7 +241,7 @@ export const buildModel = (trip: Trip): Model => {
         expense: x,
       })),
     ...trip.transfers
-      .filter((x) => x.at && !attachedTransfers.has(x.id))
+      .filter((x) => x.at && !x.cashback && !attachedTransfers.has(x.id))
       .map((x) => ({ kind: 'transfer' as const, id: x.id, start: toMin(x.at!), end: toMin(x.at!), day: dateKey(x.at!), transfer: x })),
   ];
   const events: Event[] = [...spatial, ...loose].sort((a, b) => a.start - b.start || order(a) - order(b));

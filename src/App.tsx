@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { trip } from './data/trip';
 import type { CategoryId, Currency } from './types';
-import { DAY_COLORS, amountsInJpy, buildModel, categoryOf, fmtAmounts, fmtDate, fmtMoney, fmtTime, sumByCurrency, toMin, walletOf } from './lib/core';
+import { DAY_COLORS, amountsInJpy, buildModel, categoryOf, fmtAmounts, fmtDate, fmtMoney, fmtTime, sumByCurrency, toMin, walletOf, moveLabel, stationsLabel } from './lib/core';
 import { TripMap, type Inset } from './components/TripMap';
 import { Timeline } from './components/Timeline';
 import { CategoryBars, ExpenseList } from './components/Spending';
@@ -114,7 +114,7 @@ export default function App() {
     activeEvent?.kind === 'visit'
       ? model.place(activeEvent.visit.placeId).name
       : activeEvent?.kind === 'move'
-        ? `${model.place(activeEvent.move.from).name} → ${model.place(activeEvent.move.to).name}`
+        ? [moveLabel(activeEvent.move), stationsLabel(activeEvent.move)].filter(Boolean).join('　')
         : '';
 
   return (
