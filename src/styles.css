@@ -63,6 +63,7 @@ h1, h2, p { margin: 0; }
 .nowrap { white-space: nowrap; }
 .right { text-align: right; }
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon { display: block; flex: none; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; flex: none; }
 
 /* ---------- layout：上から読むページ。地図は右の補助カード ---------- */
@@ -75,9 +76,10 @@ h1 { font-size: 32px; font-weight: 800; letter-spacing: 0.01em; }
 h2 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
-.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; min-width: 0; }
-.stat-label { font-size: 12px; color: var(--ink-2); font-weight: 600; display: flex; align-items: center; }
-.stat-value { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-top: 4px; line-height: 1.25; overflow-wrap: anywhere; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; min-width: 0; }
+.stat-label { font-size: 12px; color: var(--ink-2); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.stat-icon { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
+.stat-value { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-top: 10px; line-height: 1.25; overflow-wrap: anywhere; }
 .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
 /* 日程・ビューの切り替え。スクロールしても上に残る */
@@ -146,57 +148,97 @@ h2 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap:
 @keyframes pulse { 70% { box-shadow: 0 0 0 12px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 
 
-/* ---------- 旅程：日ごとの見出し + 滞在カード、間を移動の線でつなぐ ---------- */
-.timeline { list-style: none; margin: 0; padding: 0; --rail-x: 41px; }
+/* ---------- 旅程：時刻 | レールと印 | 中身 ---------- */
+.timeline { list-style: none; margin: 0; padding: 0; --when-w: 46px; --node-w: 30px; --col-gap: 12px; --rail-x: calc(var(--when-w) + var(--col-gap) + var(--node-w) / 2); }
 .timeline > li { scroll-margin-top: calc(var(--toolbar-h) + 64px); }
-:where(.timeline button) { all: unset; box-sizing: border-box; cursor: pointer; display: flex; width: 100%; }
-.timeline button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:where(.timeline button) { all: unset; box-sizing: border-box; cursor: pointer; }
+.timeline button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 12px; }
 
 .tl-day {
-  position: sticky; top: var(--toolbar-h); z-index: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
-  padding: 20px 0 10px; background: var(--page); font-size: 15px; font-weight: 700;
+  position: sticky; top: var(--toolbar-h); z-index: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
+  padding: 28px 0 12px; background: var(--page); font-size: 16px; font-weight: 700;
 }
 .timeline > li:first-child .tl-day { padding-top: 4px; }
 .tl-day-badge { color: #fff; font-size: 12px; padding: 3px 10px; border-radius: 999px; }
-.tl-day-stats { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.tl-day-stats { margin-left: auto; display: flex; gap: 14px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.tl-day-stats > span { display: inline-flex; align-items: center; gap: 4px; }
+.tl-day-stats .icon { color: var(--muted); }
 
-.tl-visit-body {
-  gap: 16px; padding: 16px 18px; margin: 2px 0;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-  transition: box-shadow 0.15s, background 0.15s;
+.tl-row {
+  position: relative; display: grid; width: 100%;
+  grid-template-columns: var(--when-w) var(--node-w) minmax(0, 1fr); column-gap: var(--col-gap);
 }
-.tl-visit:hover .tl-visit-body { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); }
-.tl-visit.is-selected .tl-visit-body { background: var(--surface-2); }
-.tl-visit.is-active .tl-visit-body { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-.tl-time { display: flex; flex-direction: column; font-size: 14px; font-weight: 700; width: 46px; flex: none; }
-.tl-time .muted { font-weight: 400; font-size: 12px; }
-.tl-main { flex: 1; min-width: 0; }
-.tl-title { font-weight: 700; font-size: 17px; line-height: 1.4; }
-.tl-title .muted { font-weight: 400; font-size: 12px; }
+/* 縦のレール。移動の区間だけ、その日の色で太く */
+.tl-row::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: calc(var(--rail-x) - 1px);
+  border-left: 2px solid var(--grid);
+}
+.tl-move .tl-row::before { left: calc(var(--rail-x) - 2px); border-left: 4px solid var(--day); opacity: 0.55; }
+.tl-move.is-flight .tl-row::before { border-left-style: dashed; border-left-width: 2px; left: calc(var(--rail-x) - 1px); }
+.timeline > li:first-child .tl-row::before { top: 20px; }
+.timeline > li:last-child .tl-row::before { bottom: auto; height: 20px; }
+
+.tl-when { display: flex; flex-direction: column; font-size: 13px; font-weight: 700; color: var(--ink); padding-top: 16px; }
+.tl-when-end { font-size: 12px; font-weight: 400; color: var(--muted); }
+.est { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+.tl-node { position: relative; z-index: 1; display: flex; justify-content: center; padding-top: 12px; }
+.tl-body { min-width: 0; }
+
+/* 滞在：ピン番号つきのカード */
+.pin-node {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--day); color: #fff; font-size: 12px; font-weight: 700;
+  box-shadow: 0 0 0 4px var(--page);
+}
+.tl-visit .tl-row { padding: 6px 0; }
+.tl-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 18px 16px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.tl-visit .tl-row:hover .tl-card { box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07); }
+.tl-visit.is-selected .tl-card { border-color: var(--day); box-shadow: 0 0 0 1px var(--day); }
+.tl-visit.is-active .pin-node { box-shadow: 0 0 0 4px var(--page), 0 0 0 6px var(--day); }
+.tl-card-meta { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 0.02em; }
+.tl-title { font-weight: 700; font-size: 17px; line-height: 1.4; margin-top: 2px; }
 .tl-rating { margin-left: 6px; font-size: 12px; color: var(--ink-2); letter-spacing: 1px; }
 .alt-names { font-size: 12px; color: var(--muted); margin-top: 1px; }
-.tl-note { font-size: 14px; color: var(--ink-2); margin-top: 8px; line-height: 1.7; }
-.tl-expenses { list-style: none; padding: 8px 0 0; margin: 10px 0 0; display: grid; gap: 4px; font-size: 13px; border-top: 1px dashed var(--grid); }
-.tl-expenses li { display: flex; align-items: center; }
-.tl-expenses li span:nth-child(2) { flex: 1; }
+.tl-note { font-size: 14px; color: var(--ink-2); margin-top: 10px; line-height: 1.75; }
+.tl-expenses { list-style: none; padding: 10px 0 0; margin: 12px 0 0; display: grid; gap: 6px; font-size: 13px; border-top: 1px solid var(--grid); }
+.tl-expenses li { display: flex; align-items: center; gap: 8px; }
+.tl-expenses li span:nth-child(2) { flex: 1; min-width: 0; }
+.tl-exp-icon { width: 14px; display: grid; place-items: center; flex: none; color: var(--muted); }
+.tl-exp-icon .dot { margin: 0; }
 
-/* カードの間：時刻の列の下に線を引いて、移動と場所のない出来事を並べる */
-.tl-move-body, .tl-loose-body { width: calc(100% - var(--rail-x)) !important; margin-left: var(--rail-x); border-left: 2px dotted var(--grid); border-radius: 0 8px 8px 0; }
-.tl-move-body { align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 8px 16px 8px 22px; font-size: 13px; color: var(--ink-2); }
-.tl-move:hover .tl-move-body, .tl-loose:hover .tl-loose-body { background: var(--surface-2); }
-.tl-move.is-active .tl-move-body { border-left: 2px solid var(--accent); color: var(--ink); }
-.tl-mode { width: 18px; text-align: center; }
+/* 移動：手段のアイコンと「どこ → どこ」 */
+.mode-node {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface); color: var(--day); border: 2px solid var(--day);
+  box-shadow: 0 0 0 4px var(--page);
+}
+.tl-move .tl-row { padding: 2px 0; }
+.tl-move .tl-body { display: flex; align-items: flex-start; gap: 12px; padding: 12px 12px 12px 4px; border-radius: 12px; }
+.tl-move .tl-when { padding-top: 15px; font-weight: 500; color: var(--ink-2); }
+.tl-move .tl-row:hover .tl-body, .tl-small .tl-row:hover .tl-body { background: var(--surface-2); }
+.tl-move.is-active .mode-node { background: var(--day); color: #fff; }
+.tl-move-main, .tl-small-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.tl-move-title { font-size: 14px; font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
+.tl-move-stat { font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.tl-sub { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* 支払い・お金の移動（場所に紐づかないもの）：小さな行 */
+.mini-node {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface-2); color: var(--ink-2); box-shadow: 0 0 0 3px var(--page);
+}
+.tl-small .tl-node { padding-top: 8px; }
+.tl-small .tl-when { padding-top: 9px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.tl-small .tl-body { display: flex; align-items: flex-start; gap: 12px; padding: 8px 12px 8px 4px; border-radius: 10px; }
+.tl-small-title { font-size: 13px; color: var(--ink-2); }
+.tl-small.is-active .tl-small-title { color: var(--ink); font-weight: 600; }
+
+.tl-amount { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.tl-in, .tl-amount.tl-in { color: var(--series-3); }
 .tag { margin-left: 6px; font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px dashed var(--muted); color: var(--ink-2); white-space: nowrap; font-weight: 400; }
-/* 場所のない出来事（支払い・乗車・チャージ） */
-.tl-loose-body { align-items: flex-start; gap: 8px; padding: 6px 16px 6px 22px; font-size: 13px; color: var(--ink-2); }
-.tl-loose-time { width: 40px; flex: none; font-size: 12px; padding-top: 1px; }
-.tl-loose-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; margin: 6px 5px 0; }
-.tl-loose-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.tl-loose-main .muted { font-size: 11px; }
-.tl-memo { font-size: 11px; color: var(--ink-2); }
-.tl-in { color: var(--ink-2); }
-.tag-block { display: inline-block; margin: 4px 0 0; }
-.tl-amount { margin-left: auto; color: var(--ink); }
 
 
 /* ---------- お金 ---------- */
@@ -299,9 +341,9 @@ h2 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap:
   .layout { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 16px; }
   .map-card { position: relative; top: auto; height: 300px; min-height: 0; order: -1; }
   .leaflet-control-zoom { display: none; }
-  .tl-visit-body { padding: 14px; gap: 12px; }
-  .timeline { --rail-x: 36px; }
-  .tl-move-body, .tl-loose-body { padding-left: 16px; }
+  .timeline { --when-w: 38px; --node-w: 28px; --col-gap: 8px; }
+  .tl-card { padding: 12px 14px 14px; }
+  .tl-title { font-size: 16px; }
   .tl-day-stats { margin-left: 0; width: 100%; }
   .money-view { gap: 12px; }
   .card { padding: 16px; }

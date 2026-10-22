@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Polyline, Tooltip, ZoomControl, useMap } from 'react-leaflet';
 import { BaseMap } from './BaseMap';
-import { DAY_COLORS, altNames, MODE_LABEL, fmtTime, type Event, type LatLng, type Model } from '../lib/core';
+import { DAY_COLORS, altNames, MODE_LABEL, fmtTime, stopNumbers, type Event, type LatLng, type Model } from '../lib/core';
 
 interface Props {
   model: Model;
@@ -48,11 +48,12 @@ export function TripMap({ model, events, selectedPlaceId, onSelectPlace, playhea
 
   // スコープ内の地点に通し番号を振る（同じ地点は最初の訪問の番号）
   const stops = useMemo(() => {
+    const numbers = stopNumbers(events);
     const seen = new Map<string, { n: number; day: string; arrive: number; names: string[] }>();
     for (const e of events) {
       if (e.kind !== 'visit') continue;
       const id = e.visit.placeId;
-      if (!seen.has(id)) seen.set(id, { n: seen.size + 1, day: e.day, arrive: e.start, names: [] });
+      if (!seen.has(id)) seen.set(id, { n: numbers.get(id)!, day: e.day, arrive: e.start, names: [] });
       seen.get(id)!.names.push(`${fmtTime(e.start)}–${fmtTime(e.end)}`);
     }
     return [...seen.entries()].map(([id, s]) => ({ id, ...s, place: model.place(id) }));

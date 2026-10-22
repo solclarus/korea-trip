@@ -1,19 +1,21 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   DAY_COLORS,
-  MODE_ICON,
   altNames,
   MODE_LABEL,
   categoryOf,
   fmtDate,
+  fmtDuration,
   fmtMoney,
   fmtTime,
   fmtAmounts,
+  stopNumbers,
   sumByCurrency,
   walletOf,
   type Event,
   type Model,
 } from '../lib/core';
+import { Icon } from './Icon';
 
 interface Props {
   model: Model;
@@ -26,9 +28,12 @@ interface Props {
   autoScroll: boolean;
 }
 
+// 左に時刻、真ん中に縦のレールと印、右に中身。
+// 滞在はピン番号（地図と同じ）つきのカード、移動はレール上の行、支払い・両替は小さな行。
 export function Timeline({ model, events, activeEventId, selectedPlaceId, onSelectPlace, onSeek, autoScroll }: Props) {
   const { trip } = model;
   const listRef = useRef<HTMLOListElement>(null);
+  const numbers = useMemo(() => stopNumbers(events), [events]);
 
   useEffect(() => {
     if (!activeEventId || !autoScroll) return;
@@ -50,46 +55,68 @@ export function Timeline({ model, events, activeEventId, selectedPlaceId, onSele
         const dayHeader = e.day !== lastDay;
         lastDay = e.day;
         const active = e.id === activeEventId;
+        const header = dayHeader && <DayHeader model={model} day={e.day} events={events} />;
+        const dayColor = DAY_COLORS[model.days.indexOf(e.day)];
 
-        // 場所がわからない支払い（乗車・お店など）
+        // 場所に紐づかない支払い（乗車・お店など）
         if (e.kind === 'payment') {
           const x = e.expense;
           const ride = !!x.endAt;
           return (
-            <li key={e.id} data-id={e.id} className="tl-loose">
-              {dayHeader && <DayHeader model={model} day={e.day} events={events} />}
-              <button className="tl-loose-body" onClick={() => onSeek(e.start)}>
-                <span className="tl-loose-time num">{fmtTime(e.start)}</span>
-                {ride ? (
-                  <span className="tl-mode" aria-hidden>🚇</span>
-                ) : (
-                  <span className="tl-loose-dot" style={{ background: categoryOf(x.category).color }} aria-hidden />
-                )}
-                <span className="tl-loose-main">
-                  {x.item}
-                  <span className="muted">
-                    {ride && `・${fmtTime(e.start)}→${fmtTime(e.end)}（${e.end - e.start}分）`}
-                    {x.payment && `・${walletOf(trip, x.payment)?.name}`}
-                  </span>
-                  {x.memo && <span className="tl-memo">{x.memo}</span>}
+            <li key={e.id} data-id={e.id} className={`tl-item tl-small${active ? ' is-active' : ''}`}>
+              {header}
+              <button className="tl-row" onClick={() => onSeek(e.start)}>
+                <span className="tl-when num">
+                  <Time t={e.start} />
                 </span>
-                <span className="num tl-amount">{fmtMoney(x.amount, x.currency)}</span>
+                <span className="tl-node">
+                  <span className="mini-node" style={{ color: categoryOf(x.category).color }}>
+                    <Icon name={ride ? 'subway' : 'receipt'} size={12} />
+                  </span>
+                </span>
+                <span className="tl-body">
+                  <span className="tl-small-main">
+                    <span className="tl-small-title">{x.item}</span>
+                    <span className="tl-sub">
+                      {[categoryOf(x.category).label, ride && `${fmtTime(e.start)}→${fmtTime(e.end)}（${e.end - e.start}分）`, walletOf(trip, x.payment)?.name]
+                        .filter(Boolean)
+                        .join('・')}
+                    </span>
+                    {x.memo && <span className="tl-sub">{x.memo}</span>}
+                  </span>
+                  <span className="num tl-amount">{fmtMoney(x.amount, x.currency)}</span>
+                </span>
               </button>
             </li>
           );
         }
 
+        // 場所に紐づかない両替・チャージ
         if (e.kind === 'transfer') {
           const t = e.transfer;
+          const from = walletOf(trip, t.from);
           const to = walletOf(trip, t.to)!;
           return (
-            <li key={e.id} data-id={e.id} className="tl-loose">
-              {dayHeader && <DayHeader model={model} day={e.day} events={events} />}
-              <button className="tl-loose-body" onClick={() => onSeek(e.start)}>
-                <span className="tl-loose-time num">{fmtTime(e.start)}</span>
-                <span className="tl-mode" aria-hidden>⇄</span>
-                <span className="tl-loose-main">{t.note ?? `${to.name}へ`}</span>
-                <span className="num tl-amount tl-in">+{fmtMoney(t.received, to.currency)}</span>
+            <li key={e.id} data-id={e.id} className={`tl-item tl-small${active ? ' is-active' : ''}`}>
+              {header}
+              <button className="tl-row" onClick={() => onSeek(e.start)}>
+                <span className="tl-when num">
+                  <Time t={e.start} />
+                </span>
+                <span className="tl-node">
+                  <span className="mini-node">
+                    <Icon name="exchange" size={12} />
+                  </span>
+                </span>
+                <span className="tl-body">
+                  <span className="tl-small-main">
+                    <span className="tl-small-title">{t.note ?? `${to.name}へ`}</span>
+                    <span className="tl-sub">
+                      {from?.name ?? t.source ?? '外部'} → {to.name}
+                    </span>
+                  </span>
+                  <span className="num tl-amount tl-in">+{fmtMoney(t.received, to.currency)}</span>
+                </span>
               </button>
             </li>
           );
@@ -99,19 +126,37 @@ export function Timeline({ model, events, activeEventId, selectedPlaceId, onSele
         if (e.kind === 'move') {
           const m = e.move;
           return (
-            <li key={e.id} data-id={e.id} className={`tl-move${active ? ' is-active' : ''}`}>
-              {dayHeader && <DayHeader model={model} day={e.day} events={events} />}
-              <button className="tl-move-body" onClick={() => onSeek(e.start)}>
-                <span className="tl-mode" aria-hidden>{MODE_ICON[m.mode]}</span>
-                <span>
-                  {MODE_LABEL[m.mode]}
-                  {m.line && <span className="muted">・{m.line}</span>}
-                  {m.estimated && <span className="tag">時刻は推定</span>}
+            <li
+              key={e.id}
+              data-id={e.id}
+              className={`tl-item tl-move${m.mode === 'flight' ? ' is-flight' : ''}${active ? ' is-active' : ''}`}
+              style={{ ['--day' as string]: dayColor }}
+            >
+              {header}
+              <button className="tl-row" onClick={() => onSeek(e.start)}>
+                <span className="tl-when num">
+                  <Time t={e.start} est={m.estimated} />
                 </span>
-                <span className="muted num">
-                  {e.end - e.start}分・{model.moveKm(m).toFixed(1)}km
+                <span className="tl-node">
+                  <span className="mode-node">
+                    <Icon name={m.mode} size={15} />
+                  </span>
                 </span>
-                {e.expenses.length > 0 && <span className="num tl-amount">{fmtAmounts(spent)}</span>}
+                <span className="tl-body">
+                  <span className="tl-move-main">
+                    <span className="tl-move-title">
+                      {MODE_LABEL[m.mode]}
+                      <span className="tl-move-stat num">
+                        {fmtDuration(e.end - e.start)}・{model.moveKm(m).toFixed(1)}km
+                      </span>
+                    </span>
+                    <span className="tl-sub">
+                      {model.place(m.from).name} → {model.place(m.to).name}
+                    </span>
+                    {m.line && <span className="tl-sub">{m.line}</span>}
+                  </span>
+                  {e.expenses.length > 0 && <span className="num tl-amount">{fmtAmounts(spent)}</span>}
+                </span>
               </button>
             </li>
           );
@@ -120,20 +165,35 @@ export function Timeline({ model, events, activeEventId, selectedPlaceId, onSele
         const p = model.place(e.visit.placeId);
         const selected = p.id === selectedPlaceId;
         return (
-          <li key={e.id} data-id={e.id} data-place={p.id} className={`tl-visit${active ? ' is-active' : ''}${selected ? ' is-selected' : ''}`}>
-            {dayHeader && <DayHeader model={model} day={e.day} events={events} />}
+          <li
+            key={e.id}
+            data-id={e.id}
+            data-place={p.id}
+            className={`tl-item tl-visit${active ? ' is-active' : ''}${selected ? ' is-selected' : ''}`}
+            style={{ ['--day' as string]: dayColor }}
+          >
+            {header}
             <button
-              className="tl-visit-body"
+              className="tl-row"
               onClick={() => {
                 onSelectPlace(p.id);
                 onSeek(e.start);
               }}
             >
-              <div className="tl-time num">
-                {fmtTime(e.start)}
-                <span className="muted">{fmtTime(e.end)}</span>
-              </div>
-              <div className="tl-main">
+              <span className="tl-when num">
+                <Time t={e.start} est={e.visit.estimated} />
+                <span className="tl-when-end">
+                  <Time t={e.end} est={e.visit.estimated} />
+                </span>
+              </span>
+              <span className="tl-node">
+                <span className="pin-node num">{numbers.get(p.id)}</span>
+              </span>
+              <div className="tl-body tl-card">
+                <div className="tl-card-meta">
+                  {fmtDuration(e.end - e.start)}の滞在
+                  {p.area && <span>・{p.area}</span>}
+                </div>
                 <div className="tl-title">
                   {p.name}
                   {e.visit.rating && (
@@ -144,24 +204,23 @@ export function Timeline({ model, events, activeEventId, selectedPlaceId, onSele
                   )}
                 </div>
                 <div className="alt-names">{altNames(p)}</div>
-                {e.visit.estimated && <span className="tag tag-block">時刻は推定</span>}
                 {e.visit.note && <p className="tl-note">{e.visit.note}</p>}
-                {e.transfers.length > 0 && (
-                  <ul className="tl-expenses tl-transfers">
+                {(e.transfers.length > 0 || e.expenses.length > 0) && (
+                  <ul className="tl-expenses">
                     {e.transfers.map((t) => (
                       <li key={t.id}>
-                        <span className="tl-transfer-icon" aria-hidden>⇄</span>
+                        <span className="tl-exp-icon">
+                          <Icon name="exchange" size={12} />
+                        </span>
                         <span>{t.note ?? `${walletOf(trip, t.from)?.name ?? ''} → ${walletOf(trip, t.to)?.name}`}</span>
-                        <span className="num">{fmtMoney(t.received, walletOf(trip, t.to)!.currency)}</span>
+                        <span className="num tl-in">+{fmtMoney(t.received, walletOf(trip, t.to)!.currency)}</span>
                       </li>
                     ))}
-                  </ul>
-                )}
-                {e.expenses.length > 0 && (
-                  <ul className="tl-expenses">
                     {e.expenses.map((x) => (
                       <li key={x.id}>
-                        <span className="dot" style={{ background: categoryOf(x.category).color }} />
+                        <span className="tl-exp-icon">
+                          <span className="dot" style={{ background: categoryOf(x.category).color }} />
+                        </span>
                         <span>{x.item}</span>
                         <span className="num">{fmtMoney(x.amount, x.currency)}</span>
                       </li>
@@ -177,6 +236,15 @@ export function Timeline({ model, events, activeEventId, selectedPlaceId, onSele
   );
 }
 
+/** 推定の時刻には点線の下線を引く */
+function Time({ t, est }: { t: number; est?: boolean }) {
+  return (
+    <time className={est ? 'est' : undefined} title={est ? '時刻は推定' : undefined}>
+      {fmtTime(t)}
+    </time>
+  );
+}
+
 function DayHeader({ model, day, events }: { model: Model; day: string; events: Event[] }) {
   const n = model.days.indexOf(day) + 1;
   const dayEvents = events.filter((e) => e.day === day);
@@ -185,10 +253,23 @@ function DayHeader({ model, day, events }: { model: Model; day: string; events: 
   const spent = sumByCurrency(model.trip.expenses.filter((x) => x.at.startsWith(day)));
   return (
     <div className="tl-day">
-      <span className="tl-day-badge" style={{ background: DAY_COLORS[n - 1] }}>{n}日目</span>
+      <span className="tl-day-badge" style={{ background: DAY_COLORS[n - 1] }}>
+        {n}日目
+      </span>
       <span className="tl-day-date">{fmtDate(Date.parse(day) / 60000)}</span>
       <span className="tl-day-stats num">
-        {places}か所・{km.toFixed(1)}km・{fmtAmounts(spent)}
+        <span>
+          <Icon name="pin" size={13} />
+          {places}か所
+        </span>
+        <span>
+          <Icon name="route" size={13} />
+          {km.toFixed(1)}km
+        </span>
+        <span>
+          <Icon name="wallet" size={13} />
+          {fmtAmounts(spent)}
+        </span>
       </span>
     </div>
   );

@@ -6,6 +6,7 @@ import { TripMap, type Inset } from './components/TripMap';
 import { Timeline } from './components/Timeline';
 import { CategoryBars, ExpenseList } from './components/Spending';
 import { MoneyFlow } from './components/MoneyFlow';
+import { Icon, type IconName } from './components/Icon';
 
 type Scope = 'all' | string; // 'all' or YYYY-MM-DD
 type View = 'trip' | 'money';
@@ -127,13 +128,14 @@ export default function App() {
 
         <div className="stats">
           <Stat
+            icon="calendar"
             label={scope === 'all' ? '期間' : `${dayN}日目`}
             value={scope === 'all' ? `${model.days.length}日間` : fmtDate(toMin(scope))}
             accent={scope === 'all' ? undefined : DAY_COLORS[dayN - 1]}
           />
-          <Stat label="訪れた場所" value={`${placeCount}か所`} />
-          <Stat label="移動距離" value={`${groundKm.toFixed(1)}km`} sub={walkKm > 0 ? `うち徒歩 ${walkKm.toFixed(1)}km・飛行機を除く` : '飛行機を除く'} />
-          <Stat label="支出" value={fmtAmounts(totals)} sub={`円にすると ≈ ${fmtMoney(totalJpy, 'JPY')}`} />
+          <Stat icon="pin" label="訪れた場所" value={`${placeCount}か所`} />
+          <Stat icon="route" label="移動距離" value={`${groundKm.toFixed(1)}km`} sub={walkKm > 0 ? `うち徒歩 ${walkKm.toFixed(1)}km・飛行機を除く` : '飛行機を除く'} />
+          <Stat icon="wallet" label="支出" value={fmtAmounts(totals)} sub={`円にすると ≈ ${fmtMoney(totalJpy, 'JPY')}`} />
         </div>
       </header>
 
@@ -277,11 +279,13 @@ export default function App() {
   );
 }
 
-function Stat({ label, value, sub, accent }: { label: string; value: ReactNode; sub?: ReactNode; accent?: string }) {
+function Stat({ icon, label, value, sub, accent }: { icon: IconName; label: string; value: ReactNode; sub?: ReactNode; accent?: string }) {
   return (
     <div className="stat">
       <div className="stat-label">
-        {accent && <span className="dot" style={{ background: accent }} />}
+        <span className="stat-icon" style={accent ? { color: accent } : undefined}>
+          <Icon name={icon} size={14} />
+        </span>
         {label}
       </div>
       <div className="stat-value num">{value}</div>

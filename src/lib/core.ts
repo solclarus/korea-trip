@@ -29,14 +29,6 @@ export const MODE_LABEL: Record<MoveMode, string> = {
   taxi: 'タクシー',
   walk: '徒歩',
 };
-export const MODE_ICON: Record<MoveMode, string> = {
-  flight: '✈︎',
-  train: '🚆',
-  subway: '🚇',
-  bus: '🚌',
-  taxi: '🚕',
-  walk: '🚶',
-};
 
 
 // ---------- 時刻 ----------
@@ -59,6 +51,12 @@ export const fmtDate = (min: number) => {
   return `${d.getUTCMonth() + 1}/${d.getUTCDate()}（${WEEKDAY[d.getUTCDay()]}）`;
 };
 export const dateKey = (s: string) => s.slice(0, 10);
+/** 「1時間46分」の形の所要時間 */
+export const fmtDuration = (min: number) => {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h ? `${h}時間${m ? `${m}分` : ''}` : `${m}分`;
+};
 
 export const tripDays = (trip: Trip) => {
   const days: string[] = [];
@@ -270,6 +268,13 @@ export const buildModel = (trip: Trip): Model => {
   };
 
   return { trip, days: tripDays(trip), place, movePath, moveKm, events, start, end, positionAt, eventAt };
+};
+
+/** 表示中の地点の通し番号（同じ地点は最初の訪問の番号）。地図のピンとタイムラインで共通 */
+export const stopNumbers = (events: Event[]) => {
+  const out = new Map<string, number>();
+  for (const e of events) if (e.kind === 'visit' && !out.has(e.visit.placeId)) out.set(e.visit.placeId, out.size + 1);
+  return out;
 };
 
 const order = (e: Event) => ({ visit: 0, transfer: 1, payment: 2, move: 3 })[e.kind];
