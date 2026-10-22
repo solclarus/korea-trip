@@ -12,6 +12,7 @@ import type { Trip } from '../types';
 //   - 10/16 午後：景福宮 → 南へ歩いて清渓川 → 乙支路入口から2号線で新林（本人の申告。T-money 18:29〜19:10 の乗車）
 //   - WOWPASS アプリの「グルメ旅行」（10/15）：ミョンヒョンマン カンジャンケジャン（양화로 45・₩44,800・★5「Good」）、
 //     GS25 梨泰院ヒル店（₩4,000・★5）。合井 → 梨泰院の移動（T-money 18:27〜18:54）は推定
+//   - 塩パンの店（10/16）：写真 IMG_1924 の撮影位置（16:15:52・誤差 約14m）。店名は未確認
 //   - 帰りのリムジンバス 6017（新林の8番乗り場 → 仁川空港、T-money ₩17,000）
 //   - 現地で使ったアプリ：WOWPASS、NAVER マップ
 //   - 宿：1泊目 HOTEL LaNuit（新村〜梨大の間）、2泊目 HOTEL YAJA（新林。正確な位置は未確定）。どちらも友人が予約
@@ -62,6 +63,7 @@ export const trip: Trip = {
     { id: 'seodaemun-prison', name: '西大門刑務所歴史館', nameEn: 'Seodaemun Prison History Hall', nameKo: '서대문형무소역사관', lat: 37.57454, lng: 126.95632, area: '西大門' },
     { id: 'gyeongbok', name: '景福宮', nameEn: 'Gyeongbokgung Palace', nameKo: '경복궁', lat: 37.5796, lng: 126.977, area: '鍾路' },
     { id: 'cheonggye', name: '清渓川（清渓広場）', nameEn: 'Cheonggyecheon Stream', nameKo: '청계천', lat: 37.5694, lng: 126.9787, area: '鍾路' },
+    { id: 'saltbread-seochon', name: '塩パンの店（西村）', nameEn: 'Salt bread shop (Seochon)', nameKo: '소금빵 가게 (서촌)', lat: 37.576544, lng: 126.972678, area: '鍾路（景福宮駅そば）' },
     { id: 'ediya-museum', name: 'EDIYA COFFEE 国立古宮博物館店', nameEn: 'EDIYA Coffee, National Palace Museum', nameKo: '이디야커피 국립고궁박물관점', lat: 37.57657, lng: 126.97497, area: '鍾路' },
     { id: 'dwaebong-sillim', name: 'ドェボンサムギョプサル 新林店', nameEn: 'Dwaebong Samgyeopsal (Sillim)', nameKo: '돼봉삼겹살 신림점', lat: 37.4846, lng: 126.9285, area: '冠岳' },
     { id: 'hotel-lanuit', name: 'Hotel LaNuit', nameEn: 'Hotel LaNuit', nameKo: '라뉘호텔', lat: 37.55358, lng: 126.93606, area: '麻浦' },
@@ -81,7 +83,8 @@ export const trip: Trip = {
     { id: 'v6h', placeId: 'hotel-lanuit', arrive: '2026-10-16T02:30', depart: '2026-10-16T12:30', estimated: true, note: '1泊目（友人が予約）。' },
     { id: 'v6a', placeId: 'mbro-sinchon', arrive: '2026-10-16T12:45', depart: '2026-10-16T14:00', estimated: true, note: '新村・名物通りのトンカツ店でお昼。' },
     { id: 'v6b', placeId: 'seodaemun-prison', arrive: '2026-10-16T14:30', depart: '2026-10-16T15:45', estimated: true, note: '大人2名のチケット（14:51 発券・₩6,000）は友人が払ってくれた。' },
-    { id: 'v7', placeId: 'ediya-museum', arrive: '2026-10-16T16:15', depart: '2026-10-16T16:45', estimated: true, note: '国立古宮博物館（景福宮の隣）の中のカフェ。自分は ICED Caffe Mocha、友人の分の ICED Americano もまとめて払った。' },
+    { id: 'v6c', placeId: 'saltbread-seochon', arrive: '2026-10-16T16:10', depart: '2026-10-16T16:18', estimated: true, note: '景福宮の西側・西村の韓屋風の小さな店で塩パン。店名は未確認。' },
+    { id: 'v7', placeId: 'ediya-museum', arrive: '2026-10-16T16:25', depart: '2026-10-16T16:45', estimated: true, note: '国立古宮博物館（景福宮の隣）の中のカフェ。自分は ICED Caffe Mocha、友人の分の ICED Americano もまとめて払った。' },
     { id: 'v7a', placeId: 'gyeongbok', arrive: '2026-10-16T16:45', depart: '2026-10-16T17:45', estimated: true, note: '夕焼けの光化門。' },
     { id: 'v7b', placeId: 'cheonggye', arrive: '2026-10-16T18:00', depart: '2026-10-16T18:20', estimated: true, note: '景福宮から南へ歩いて清渓川へ。ライトアップされた夜の清渓川。' },
     { id: 'v8', placeId: 'dwaebong-sillim', arrive: '2026-10-16T19:15', depart: '2026-10-16T22:25', estimated: true, note: '新林駅の近く（位置はおおよそ）。友人がごちそうしてくれた（自分の支払いなし）。ドェボン盛り合わせとチャミスル・テラ。' },
@@ -101,7 +104,8 @@ export const trip: Trip = {
     { id: 'm2h', from: 'rest-sinchon', to: 'hotel-lanuit', depart: '2026-10-16T02:20', arrive: '2026-10-16T02:30', mode: 'walk', estimated: true },
     { id: 'm2i', from: 'hotel-lanuit', to: 'mbro-sinchon', depart: '2026-10-16T12:30', arrive: '2026-10-16T12:45', mode: 'walk', estimated: true },
     { id: 'm3a', from: 'mbro-sinchon', to: 'seodaemun-prison', depart: '2026-10-16T14:00', arrive: '2026-10-16T14:30', mode: 'bus', line: '緑の支線バス（番号不明）', estimated: true },
-    { id: 'm3b', from: 'seodaemun-prison', to: 'ediya-museum', depart: '2026-10-16T15:45', arrive: '2026-10-16T16:15', mode: 'walk', line: '交通手段は不明（T-money の記録なし）', estimated: true },
+    { id: 'm3b', from: 'seodaemun-prison', to: 'saltbread-seochon', depart: '2026-10-16T15:45', arrive: '2026-10-16T16:10', mode: 'walk', line: '西大門刑務所から景福宮まで歩いて', estimated: true },
+    { id: 'm3c', from: 'saltbread-seochon', to: 'ediya-museum', depart: '2026-10-16T16:18', arrive: '2026-10-16T16:25', mode: 'walk', estimated: true },
     { id: 'm4', from: 'gyeongbok', to: 'cheonggye', depart: '2026-10-16T17:45', arrive: '2026-10-16T18:00', mode: 'walk', estimated: true },
     { id: 'm5', from: 'cheonggye', to: 'dwaebong-sillim', depart: '2026-10-16T18:20', arrive: '2026-10-16T19:15', mode: 'subway', line: '2号線（乙支路入口 → 新林）', estimated: true,
       rail: [{ relation: 4729409, from: '을지로입구', to: '신림' }] },
@@ -135,7 +139,7 @@ export const trip: Trip = {
     { id: 'w7', at: '2026-10-16T13:23', amount: 29900, currency: 'KRW', category: 'food', item: 'エムブロトンカツ', payment: 'wowpass', placeId: 'mbro-sinchon',
       memo: '13:18 に ₩25,900 で決済 → 取消して ₩29,900 で再決済' },
     { id: 'r3', at: '2026-10-16T14:12', endAt: '2026-10-16T14:23', amount: 1500, currency: 'KRW', category: 'transport', item: 'バス', payment: 'tmoney', moveId: 'm3a', memo: '乗車 14:12 → 下車 14:23。₩1,500 はバス運賃' },
-    { id: 'w8', at: '2026-10-16T16:16', amount: 12000, currency: 'KRW', category: 'food', item: '塩パンの店', payment: 'wowpass', memo: '店名・場所は未確認（本人の申告）' },
+    { id: 'w8', at: '2026-10-16T16:16', amount: 12000, currency: 'KRW', category: 'food', item: '塩パン', payment: 'wowpass', placeId: 'saltbread-seochon' },
     // 1回の決済 ₩7,700 を自分の分と友人の分に分けて記録
     { id: 'w9', at: '2026-10-16T16:26', amount: 4500, currency: 'KRW', category: 'cafe', item: 'ICED Caffe Mocha (L)', payment: 'wowpass', placeId: 'ediya-museum',
       memo: 'EDIYA COFFEE（レシートあり・決済は ₩7,700 で1回）' },
