@@ -9,6 +9,19 @@ npm run build   # 型チェック + ビルド
 npm run paths   # 移動経路（線路・道路沿い）を生成
 ```
 
+## 技術構成
+
+Vite 8 / React 19 / TypeScript 7 / Tailwind CSS 4 / shadcn/ui（Radix）/ Lucide アイコン。
+地図は Leaflet ＋ MapLibre GL 6（OpenFreeMap のベクタータイル）。
+
+- 画面の部品は `src/components/ui/`（shadcn/ui）。追加は `npx shadcn@latest add <名前>`
+- 色・角丸などのテーマは `src/index.css` の CSS 変数。フォントはいまは OS 標準
+
+## 写真
+
+`public/photos/` に置いて、`src/data/trip.ts` の `photos` に追加する。
+撮影日時（`at`）か場所（`placeId`）で、旅程の滞在に自動で入る。写真がなくても画面は成り立つ。
+
 ## できること
 
 - **日程タブ**：全日程 / Day 1〜3 で地図・タイムライン・集計をまとめて切り替え

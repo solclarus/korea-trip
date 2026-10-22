@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Expense, Transfer, Trip } from '../types';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { ArrowLeftRight, ChevronDown, Star } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
+import type { Expense, Photo, Transfer, Trip } from '@/types';
 import {
   DAY_COLORS,
-  altNames,
   MODE_LABEL,
+  altNames,
   categoryOf,
-  fmtDate,
   fmtDuration,
   fmtMoney,
   fmtTime,
@@ -14,8 +16,8 @@ import {
   walletOf,
   type Event,
   type Model,
-} from '../lib/core';
-import { Icon } from './Icon';
+} from '@/lib/core';
+import { MODE_ICON } from './icons';
 
 interface Props {
   model: Model;
@@ -28,317 +30,356 @@ interface Props {
   autoScroll: boolean;
 }
 
-// 左に時刻、真ん中に縦のレールと印、右に中身。
-// 滞在はピン番号（地図と同じ）つきのカード、移動はレール上の行、支払い・両替は小さな行。
+const WEEKDAY = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+
+// 旅の日記：日ごとに大きな見出し、左に時刻、細い線でつないだ出来事。
+// 金額・メモは各出来事を開いたときだけ出す。写真があれば大きく見せ、なくても文字だけで成り立つ。
 export function Timeline({ model, events, activeEventId, selectedPlaceId, onSelectPlace, onSeek, autoScroll }: Props) {
-  const { trip } = model;
-  const listRef = useRef<HTMLOListElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const numbers = useMemo(() => stopNumbers(events), [events]);
-  // 金額などの詳細は、項目を押したときだけ開く
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const toggle = (id: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const days = model.days.filter((d) => events.some((e) => e.day === d));
 
   useEffect(() => {
     if (!activeEventId || !autoScroll) return;
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-id="${activeEventId}"]`);
-    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    listRef.current?.querySelector(`[data-id="${activeEventId}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [activeEventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 地図でピンを選んだら、その場所までスクロール
   useEffect(() => {
     if (!selectedPlaceId) return;
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-place="${selectedPlaceId}"]`);
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    listRef.current?.querySelector(`[data-place="${selectedPlaceId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [selectedPlaceId]);
 
-  let lastDay = '';
   return (
-    <ol className="timeline" ref={listRef}>
-      {events.map((e) => {
-        const dayHeader = e.day !== lastDay;
-        lastDay = e.day;
-        const active = e.id === activeEventId;
-        const header = dayHeader && <DayHeader model={model} day={e.day} events={events} />;
-        const isOpen = open.has(e.id);
-        const dayColor = DAY_COLORS[model.days.indexOf(e.day)];
-
-        // 場所に紐づかない支払い（乗車・お店など）
-        if (e.kind === 'payment') {
-          const x = e.expense;
-          const ride = !!x.endAt;
-          return (
-            <li key={e.id} data-id={e.id} className={`tl-item tl-small${active ? ' is-active' : ''}`}>
-              {header}
-              <button
-                className="tl-row"
-                aria-expanded={isOpen}
-                onClick={() => {
-                  onSeek(e.start);
-                  toggle(e.id);
-                }}
-              >
-                <span className="tl-when num">
-                  <Time t={e.start} />
-                </span>
-                <span className="tl-node">
-                  <span className="mini-node" style={{ color: categoryOf(x.category).color }}>
-                    <Icon name={ride ? 'subway' : 'receipt'} size={12} />
-                  </span>
-                </span>
-                <span className="tl-body">
-                  <span className="tl-small-main">
-                    <span className="tl-small-title">{x.item}</span>
-                    <span className="tl-sub">
-                      {[categoryOf(x.category).label, ride && `${fmtTime(e.start)}→${fmtTime(e.end)}（${e.end - e.start}分）`]
-                        .filter(Boolean)
-                        .join('・')}
-                    </span>
-                    {isOpen && <Details trip={trip} expenses={[x]} />}
-                  </span>
-                  <More open={isOpen} />
-                </span>
-              </button>
-            </li>
-          );
-        }
-
-        // 場所に紐づかない両替・チャージ
-        if (e.kind === 'transfer') {
-          const t = e.transfer;
-          const from = walletOf(trip, t.from);
-          const to = walletOf(trip, t.to)!;
-          return (
-            <li key={e.id} data-id={e.id} className={`tl-item tl-small${active ? ' is-active' : ''}`}>
-              {header}
-              <button
-                className="tl-row"
-                aria-expanded={isOpen}
-                onClick={() => {
-                  onSeek(e.start);
-                  toggle(e.id);
-                }}
-              >
-                <span className="tl-when num">
-                  <Time t={e.start} />
-                </span>
-                <span className="tl-node">
-                  <span className="mini-node">
-                    <Icon name="exchange" size={12} />
-                  </span>
-                </span>
-                <span className="tl-body">
-                  <span className="tl-small-main">
-                    <span className="tl-small-title">{from && from.currency !== to.currency ? `両替して${to.name}へ` : `${to.name}にチャージ`}</span>
-                    {isOpen && <Details trip={trip} transfers={[t]} />}
-                  </span>
-                  <More open={isOpen} />
-                </span>
-              </button>
-            </li>
-          );
-        }
-
-        if (e.kind === 'move') {
-          const m = e.move;
-          return (
-            <li
-              key={e.id}
-              data-id={e.id}
-              className={`tl-item tl-move${m.mode === 'flight' ? ' is-flight' : ''}${active ? ' is-active' : ''}`}
-              style={{ ['--day' as string]: dayColor }}
-            >
-              {header}
-              <button
-                className="tl-row"
-                aria-expanded={e.expenses.length > 0 ? isOpen : undefined}
-                onClick={() => {
-                  onSeek(e.start);
-                  toggle(e.id);
-                }}
-              >
-                <span className="tl-when num">
-                  <Time t={e.start} est={m.estimated} />
-                </span>
-                <span className="tl-node">
-                  <span className="mode-node">
-                    <Icon name={m.mode} size={15} />
-                  </span>
-                </span>
-                <span className="tl-body">
-                  <span className="tl-move-main">
-                    <span className="tl-move-title">
-                      {MODE_LABEL[m.mode]}
-                      <span className="tl-move-stat num">
-                        {fmtDuration(e.end - e.start)}・{model.moveKm(m).toFixed(1)}km
-                      </span>
-                    </span>
-                    {m.line && <span className="tl-sub">{m.line}</span>}
-                    {m.stations && m.stations.length > 0 && (
-                      <span className="tl-stations">
-                        <span>{stationsLabel(m)}</span>
-                        <span className="tl-stations-ko">{stationsLabel(m, 'ko')}</span>
-                      </span>
-                    )}
-                    {isOpen && e.expenses.length > 0 && <Details trip={trip} expenses={e.expenses} />}
-                  </span>
-                  {e.expenses.length > 0 && <More open={isOpen} />}
-                </span>
-              </button>
-            </li>
-          );
-        }
-
-        const p = model.place(e.visit.placeId);
-        const selected = p.id === selectedPlaceId;
-        const hasDetails = !!e.visit.note || e.expenses.length + e.transfers.length > 0;
+    <div ref={listRef} className="space-y-16">
+      {days.map((day) => {
+        const n = model.days.indexOf(day) + 1;
+        const dayEvents = events.filter((e) => e.day === day);
         return (
-          <li
-            key={e.id}
-            data-id={e.id}
-            data-place={p.id}
-            className={`tl-item tl-visit${active ? ' is-active' : ''}${selected ? ' is-selected' : ''}`}
-            style={{ ['--day' as string]: dayColor }}
-          >
-            {header}
-            <button
-              className="tl-row"
-              aria-expanded={hasDetails ? isOpen : undefined}
-              onClick={() => {
-                onSelectPlace(p.id);
-                onSeek(e.start);
-                toggle(e.id);
-              }}
-            >
-              <span className="tl-when num">
-                <Time t={e.start} est={e.visit.estimated} />
-                <span className="tl-when-end">
-                  <Time t={e.end} est={e.visit.estimated} />
-                </span>
-              </span>
-              <span className="tl-node">
-                <span className="pin-node num">{numbers.get(p.id)}</span>
-              </span>
-              <div className="tl-body tl-card">
-                <div className="tl-card-meta">
-                  {fmtDuration(e.end - e.start)}の滞在
-                  {p.area && <span>・{p.area}</span>}
-                </div>
-                <div className="tl-title">
-                  {p.name}
-                  {e.visit.rating && (
-                    <span className="tl-rating" aria-label={`満足度 ${e.visit.rating}/5`}>
-                      {'★'.repeat(e.visit.rating)}
-                      <span className="muted">{'★'.repeat(5 - e.visit.rating)}</span>
-                    </span>
-                  )}
-                </div>
-                <div className="alt-names">{altNames(p)}</div>
-                {hasDetails && <More open={isOpen} />}
-                {isOpen && <Details trip={trip} note={e.visit.note} expenses={e.expenses} transfers={e.transfers} />}
-              </div>
-            </button>
-          </li>
+          <section key={day} style={{ ['--day' as string]: DAY_COLORS[n - 1] }}>
+            <DayHeader model={model} day={day} n={n} events={dayEvents} />
+            <ol className="mt-8">
+              {dayEvents.map((e, i) => (
+                <Entry
+                  key={e.id}
+                  model={model}
+                  event={e}
+                  last={i === dayEvents.length - 1}
+                  number={e.kind === 'visit' ? numbers.get(e.visit.placeId) : undefined}
+                  active={e.id === activeEventId}
+                  selected={e.kind === 'visit' && e.visit.placeId === selectedPlaceId}
+                  onSelectPlace={onSelectPlace}
+                  onSeek={onSeek}
+                />
+              ))}
+            </ol>
+          </section>
         );
       })}
-    </ol>
+    </div>
   );
 }
 
-/** 押すと開く詳細があることを示す */
-function More({ open }: { open: boolean }) {
+function DayHeader({ model, day, n, events }: { model: Model; day: string; n: number; events: Event[] }) {
+  const d = new Date(Date.parse(day));
+  const places = new Set(events.flatMap((e) => (e.kind === 'visit' ? [e.visit.placeId] : []))).size;
+  const km = events.reduce((s, e) => s + (e.kind === 'move' && e.move.mode !== 'flight' ? model.moveKm(e.move) : 0), 0);
   return (
-    <span className={`tl-more${open ? ' is-open' : ''}`} aria-hidden title={open ? '閉じる' : '詳細'}>
-      <Icon name="chevron" size={16} />
-    </span>
+    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b pb-4">
+      <div>
+        <p className="text-sm font-semibold" style={{ color: 'var(--day)' }}>
+          {n}日目
+        </p>
+        <h2 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+          {d.getUTCMonth() + 1}月{d.getUTCDate()}日
+          <span className="ml-3 text-lg font-medium text-muted-foreground sm:text-xl">{WEEKDAY[d.getUTCDay()]}</span>
+        </h2>
+      </div>
+      <p className="text-sm text-muted-foreground tabular-nums">
+        {places}か所・{km.toFixed(1)}km
+      </p>
+    </header>
   );
 }
 
-/** 金額・支払い方法・メモ。項目を開いたときだけ出す */
-function Details({
-  trip,
-  note,
-  expenses = [],
-  transfers = [],
+interface EntryProps {
+  model: Model;
+  event: Event;
+  last: boolean;
+  number?: number;
+  active: boolean;
+  selected: boolean;
+  onSelectPlace: (id: string) => void;
+  onSeek: (t: number) => void;
+}
+
+/** 1つの出来事。左に時刻、細い縦線の上に印、右に中身 */
+function Entry({ model, event: e, last, number, active, selected, onSelectPlace, onSeek }: EntryProps) {
+  const isMove = e.kind === 'move';
+  const flight = isMove && e.move.mode === 'flight';
+  const estimated = (e.kind === 'visit' && e.visit.estimated) || (e.kind === 'move' && e.move.estimated);
+
+  // 縦線：移動はその日の色で太く（飛行機は破線）、それ以外は細い線
+  const railStyle = isMove
+    ? flight
+      ? { backgroundImage: 'linear-gradient(var(--day) 55%, transparent 0)', backgroundSize: '3px 9px', opacity: 0.55 }
+      : { background: 'var(--day)', opacity: 0.4 }
+    : undefined;
+
+  return (
+    <li
+      data-id={e.id}
+      data-place={e.kind === 'visit' ? e.visit.placeId : undefined}
+      className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[3.5rem_minmax(0,1fr)] sm:gap-x-4"
+    >
+      <button
+        type="button"
+        onClick={() => onSeek(e.start)}
+        className={cn('self-start pt-0.5 text-right text-sm tabular-nums', e.kind === 'visit' ? 'font-semibold' : 'text-muted-foreground')}
+      >
+        <span className={cn(estimated && 'est')}>{fmtTime(e.start)}</span>
+        {e.kind === 'visit' && (
+          <span className={cn('block text-xs font-normal text-muted-foreground', estimated && 'est')}>{fmtTime(e.end)}</span>
+        )}
+      </button>
+
+      <div className={cn('relative min-w-0 pl-10', e.kind === 'visit' ? 'pb-10' : isMove ? 'pb-8' : 'pb-5')}>
+        {!last && (
+          <span
+            aria-hidden
+            className={cn('absolute top-0 -bottom-px left-3', isMove ? 'w-[3px] -translate-x-1/2 rounded-full' : 'w-px bg-border')}
+            style={railStyle}
+          />
+        )}
+        <Marker event={e} number={number} active={active} />
+        {e.kind === 'visit' && (
+          <VisitBody
+            model={model}
+            event={e}
+            selected={selected}
+            onSelect={() => {
+              onSelectPlace(e.visit.placeId);
+              onSeek(e.start);
+            }}
+          />
+        )}
+        {e.kind === 'move' && <MoveBody model={model} event={e} />}
+        {e.kind === 'payment' && <PaymentBody trip={model.trip} expense={e.expense} start={e.start} end={e.end} />}
+        {e.kind === 'transfer' && <TransferBody trip={model.trip} transfer={e.transfer} />}
+        {e.kind === 'photo' && <PhotoGrid photos={[e.photo]} />}
+      </div>
+    </li>
+  );
+}
+
+/** 縦線の上の印：滞在はピン番号（地図と同じ）、移動は手段のアイコン、それ以外は小さな点 */
+function Marker({ event: e, number, active }: { event: Event; number?: number; active: boolean }) {
+  const base = 'absolute top-0 left-0 grid place-items-center rounded-full';
+  if (e.kind === 'visit') {
+    return (
+      <span
+        className={cn(base, 'size-6 text-[11px] font-bold text-white tabular-nums ring-4 ring-background')}
+        style={{ background: 'var(--day)', boxShadow: active ? '0 0 0 6px var(--background), 0 0 0 8px var(--day)' : undefined }}
+      >
+        {number}
+      </span>
+    );
+  }
+  if (e.kind === 'move') {
+    const Icon = MODE_ICON[e.move.mode];
+    return (
+      <span
+        className={cn(base, 'size-6 border-2 ring-4 ring-background')}
+        style={{ borderColor: 'var(--day)', color: active ? '#fff' : 'var(--day)', background: active ? 'var(--day)' : 'var(--background)' }}
+      >
+        <Icon className="size-3.5" />
+      </span>
+    );
+  }
+  return <span className={cn(base, 'top-1.5 left-[7px] size-2.5 bg-muted-foreground/35 ring-4 ring-background')} />;
+}
+
+/** 開閉できる出来事：見出しの右に丸いアイコン、開くと詳細 */
+function Expandable({ head, details, className }: { head: ReactNode; details?: ReactNode; className?: string }) {
+  if (!details) return <div className={className}>{head}</div>;
+  return (
+    <Collapsible className={cn('group/entry', className)}>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">{head}</div>
+        <CollapsibleTrigger
+          className="-mt-0.5 grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          aria-label="詳細"
+        >
+          <ChevronDown className="size-4 transition-transform group-data-[state=open]/entry:rotate-180" />
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+        <div className="pt-3">{details}</div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function VisitBody({
+  model,
+  event: e,
+  selected,
+  onSelect,
 }: {
-  trip: Trip;
-  note?: string;
-  expenses?: Expense[];
-  transfers?: Transfer[];
+  model: Model;
+  event: Extract<Event, { kind: 'visit' }>;
+  selected: boolean;
+  onSelect: () => void;
 }) {
+  const p = model.place(e.visit.placeId);
+  const hasDetails = !!e.visit.note || e.expenses.length + e.transfers.length > 0;
   return (
-    <span className="tl-details">
-      {note && <span className="tl-note">{note}</span>}
-      {transfers.map((t) => {
-        const to = walletOf(trip, t.to)!;
-        const from = walletOf(trip, t.from);
-        return (
-          <span key={t.id} className="tl-detail">
-            <span className="tl-exp-icon">
-              <Icon name="exchange" size={12} />
+    <div className="-mt-1">
+      <Expandable
+        head={
+          <button type="button" onClick={onSelect} className="text-left">
+            <h3
+              className={cn('text-xl font-bold tracking-tight text-balance sm:text-2xl', selected && 'underline decoration-2 underline-offset-4')}
+              style={selected ? { textDecorationColor: 'var(--day)' } : undefined}
+            >
+              {p.name}
+            </h3>
+            <p className="mt-0.5 text-sm text-muted-foreground">{altNames(p)}</p>
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span>{fmtDuration(e.end - e.start)}</span>
+              {p.area && <span>{p.area}</span>}
+              {e.visit.rating && <Rating value={e.visit.rating} />}
+            </p>
+          </button>
+        }
+        details={hasDetails ? <Details trip={model.trip} note={e.visit.note} expenses={e.expenses} transfers={e.transfers} /> : undefined}
+      />
+      {e.photos.length > 0 && <PhotoGrid photos={e.photos} className="mt-4" />}
+    </div>
+  );
+}
+
+function MoveBody({ model, event: e }: { model: Model; event: Extract<Event, { kind: 'move' }> }) {
+  const m = e.move;
+  return (
+    <Expandable
+      className="pt-0.5"
+      head={
+        <div className="text-sm">
+          <p>
+            <span className="font-semibold">{MODE_LABEL[m.mode]}</span>
+            <span className="text-muted-foreground tabular-nums">
+              ・{fmtDuration(e.end - e.start)}・{model.moveKm(m).toFixed(1)}km
             </span>
-            <span className="tl-detail-main">
-              <span>{t.note ?? `${from?.name ?? t.source ?? ''} → ${to.name}`}</span>
-              <span className="tl-sub">
-                {from?.name ?? t.source ?? '外部'} → {to.name}
-                {from && t.sent != null && from.currency !== to.currency && `・${fmtMoney(t.sent, from.currency)} を両替`}
-              </span>
+          </p>
+          {m.line && <p className="text-muted-foreground">{m.line}</p>}
+          {m.stations && m.stations.length > 0 && (
+            <p className="mt-1.5">
+              <span className="font-medium">{stationsLabel(m)}</span>
+              <span className="block text-xs text-muted-foreground">{stationsLabel(m, 'ko')}</span>
+            </p>
+          )}
+        </div>
+      }
+      details={e.expenses.length > 0 ? <Details trip={model.trip} expenses={e.expenses} /> : undefined}
+    />
+  );
+}
+
+function PaymentBody({ trip, expense: x, start, end }: { trip: Trip; expense: Expense; start: number; end: number }) {
+  return (
+    <Expandable
+      head={
+        <p className="text-sm text-muted-foreground">
+          <span className="text-foreground">{x.item}</span>
+          {x.endAt && (
+            <span className="tabular-nums">
+              ・{fmtTime(start)}→{fmtTime(end)}（{end - start}分）
             </span>
-            <span className="num tl-in">+{fmtMoney(t.received, to.currency)}</span>
-          </span>
-        );
-      })}
-      {expenses.map((x) => (
-        <span key={x.id} className="tl-detail">
-          <span className="tl-exp-icon">
-            <span className="dot" style={{ background: categoryOf(x.category).color }} />
-          </span>
-          <span className="tl-detail-main">
-            <span>{x.item}</span>
-            <span className="tl-sub">{[categoryOf(x.category).label, walletOf(trip, x.payment)?.name, x.memo].filter(Boolean).join('・')}</span>
-          </span>
-          <span className="num">{fmtMoney(x.amount, x.currency)}</span>
-        </span>
+          )}
+        </p>
+      }
+      details={<Details trip={trip} expenses={[x]} />}
+    />
+  );
+}
+
+function TransferBody({ trip, transfer: t }: { trip: Trip; transfer: Transfer }) {
+  const to = walletOf(trip, t.to)!;
+  const from = walletOf(trip, t.from);
+  return (
+    <Expandable
+      head={<p className="text-sm">{from && from.currency !== to.currency ? `両替して${to.name}へ` : `${to.name}にチャージ`}</p>}
+      details={<Details trip={trip} transfers={[t]} />}
+    />
+  );
+}
+
+/** 開いたときの中身：メモ、両替・チャージ、支払い */
+function Details({ trip, note, expenses = [], transfers = [] }: { trip: Trip; note?: string; expenses?: Expense[]; transfers?: Transfer[] }) {
+  return (
+    <div className="space-y-3 rounded-xl bg-muted/70 p-4 text-sm">
+      {note && <p className="leading-relaxed text-foreground/80">{note}</p>}
+      {transfers.length + expenses.length > 0 && (
+        <ul className={cn('space-y-2.5', note && 'border-t border-border pt-3')}>
+          {transfers.map((t) => {
+            const to = walletOf(trip, t.to)!;
+            const from = walletOf(trip, t.from);
+            return (
+              <li key={t.id} className="flex items-start gap-3">
+                <ArrowLeftRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <p>{t.note ?? `${from?.name ?? t.source} → ${to.name}`}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {from?.name ?? t.source ?? '外部'} → {to.name}
+                  </p>
+                </div>
+                <span className="font-semibold whitespace-nowrap text-positive tabular-nums">+{fmtMoney(t.received, to.currency)}</span>
+              </li>
+            );
+          })}
+          {expenses.map((x) => (
+            <li key={x.id} className="flex items-start gap-3">
+              <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: categoryOf(x.category).color }} />
+              <div className="min-w-0 flex-1">
+                <p>{x.item}</p>
+                <p className="text-xs text-muted-foreground">
+                  {[categoryOf(x.category).label, walletOf(trip, x.payment)?.name, x.memo].filter(Boolean).join('・')}
+                </p>
+              </div>
+              <span className={cn('font-semibold whitespace-nowrap tabular-nums', x.estimated && 'est')}>{fmtMoney(x.amount, x.currency)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Rating({ value }: { value: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`満足度 ${value}/5`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <Star key={i} className={cn('size-3', i < value ? 'fill-current text-foreground/70' : 'text-muted-foreground/40')} />
       ))}
     </span>
   );
 }
 
-/** 推定の時刻には点線の下線を引く */
-function Time({ t, est }: { t: number; est?: boolean }) {
+/** 写真：1枚目を大きく、残りは小さく並べる */
+function PhotoGrid({ photos, className }: { photos: Photo[]; className?: string }) {
+  const [first, ...rest] = photos;
   return (
-    <time className={est ? 'est' : undefined} title={est ? '時刻は推定' : undefined}>
-      {fmtTime(t)}
-    </time>
-  );
-}
-
-function DayHeader({ model, day, events }: { model: Model; day: string; events: Event[] }) {
-  const n = model.days.indexOf(day) + 1;
-  const dayEvents = events.filter((e) => e.day === day);
-  const places = new Set(dayEvents.flatMap((e) => (e.kind === 'visit' ? [e.visit.placeId] : []))).size;
-  const km = dayEvents.reduce((s, e) => s + (e.kind === 'move' && e.move.mode !== 'flight' ? model.moveKm(e.move) : 0), 0);
-  return (
-    <div className="tl-day">
-      <span className="tl-day-badge" style={{ background: DAY_COLORS[n - 1] }}>
-        {n}日目
-      </span>
-      <span className="tl-day-date">{fmtDate(Date.parse(day) / 60000)}</span>
-      <span className="tl-day-stats num">
-        <span>
-          <Icon name="pin" size={13} />
-          {places}か所
-        </span>
-        <span>
-          <Icon name="route" size={13} />
-          {km.toFixed(1)}km
-        </span>
-      </span>
-    </div>
+    <figure className={cn('space-y-2', className)}>
+      <img src={first.src} alt={first.caption ?? ''} loading="lazy" className="aspect-[4/3] w-full rounded-xl bg-muted object-cover" />
+      {rest.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {rest.map((p) => (
+            <img key={p.id} src={p.src} alt={p.caption ?? ''} loading="lazy" className="aspect-square w-full rounded-lg bg-muted object-cover" />
+          ))}
+        </div>
+      )}
+      {first.caption && <figcaption className="text-xs text-muted-foreground">{first.caption}</figcaption>}
+    </figure>
   );
 }

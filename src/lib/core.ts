@@ -1,5 +1,5 @@
 import generatedPaths from '../data/paths.generated.json';
-import type { CategoryId, Currency, Expense, Move, MoveMode, Place, Transfer, Trip, Visit, Wallet } from '../types';
+import type { Photo, CategoryId, Currency, Expense, Move, MoveMode, Place, Transfer, Trip, Visit, Wallet } from '../types';
 
 // ---------- 表示設定 ----------
 
@@ -174,10 +174,12 @@ export interface Model {
 }
 
 export type Event =
-  | { kind: 'visit'; id: string; start: number; end: number; day: string; visit: Visit; expenses: Expense[]; transfers: Transfer[] }
+  | { kind: 'visit'; id: string; start: number; end: number; day: string; visit: Visit; expenses: Expense[]; transfers: Transfer[]; photos: Photo[] }
   | { kind: 'move'; id: string; start: number; end: number; day: string; move: Move; expenses: Expense[] }
   /** 場所がわからない支払い（交通系ICの乗車など） */
   | { kind: 'payment'; id: string; start: number; end: number; day: string; expense: Expense }
+  /** 滞在に紐づかなかった写真 */
+  | { kind: 'photo'; id: string; start: number; end: number; day: string; photo: Photo }
   /** 場所がわからない両替・チャージ */
   | { kind: 'transfer'; id: string; start: number; end: number; day: string; transfer: Transfer };
 
@@ -199,6 +201,14 @@ export const buildModel = (trip: Trip): Model => {
     ];
   const moveKm = (m: Move) => pathLengthKm(movePath(m));
 
+  // 写真は、場所の指定があればその場所の滞在へ（時刻があれば時間帯も見る）、なければ撮影時刻が入る滞在へ
+  const photos = [...(trip.photos ?? [])].sort((a, b) => (a.at ?? '').localeCompare(b.at ?? ''));
+  const within = (p: Photo, v: Visit) => !!p.at && toMin(p.at) >= toMin(v.arrive) && toMin(p.at) <= toMin(v.depart);
+  const photoVisit = (p: Photo) =>
+    (p.placeId && trip.visits.find((v) => v.placeId === p.placeId && (!p.at || within(p, v)))) ||
+    trip.visits.find((v) => within(p, v));
+  const photosFor = (v: Visit) => photos.filter((p) => photoVisit(p) === v);
+
   const spatial: SpatialEvent[] = [
     ...trip.visits.map((v) => ({
       kind: 'visit' as const,
@@ -214,6 +224,7 @@ export const buildModel = (trip: Trip): Model => {
       transfers: trip.transfers.filter(
         (t) => !t.cashback && t.at && t.placeId === v.placeId && toMin(t.at) >= toMin(v.arrive) && toMin(t.at) <= toMin(v.depart),
       ),
+      photos: photosFor(v),
     })),
     ...trip.moves.map((m) => ({
       kind: 'move' as const,
@@ -243,6 +254,9 @@ export const buildModel = (trip: Trip): Model => {
     ...trip.transfers
       .filter((x) => x.at && !x.cashback && !attachedTransfers.has(x.id))
       .map((x) => ({ kind: 'transfer' as const, id: x.id, start: toMin(x.at!), end: toMin(x.at!), day: dateKey(x.at!), transfer: x })),
+    ...photos
+      .filter((p) => p.at && !photoVisit(p))
+      .map((p) => ({ kind: 'photo' as const, id: p.id, start: toMin(p.at!), end: toMin(p.at!), day: dateKey(p.at!), photo: p })),
   ];
   const events: Event[] = [...spatial, ...loose].sort((a, b) => a.start - b.start || order(a) - order(b));
 
@@ -284,4 +298,4 @@ export const stopNumbers = (events: Event[]) => {
   return out;
 };
 
-const order = (e: Event) => ({ visit: 0, transfer: 1, payment: 2, move: 3 })[e.kind];
+const order = (e: Event) => ({ visit: 0, photo: 1, transfer: 2, payment: 3, move: 4 })[e.kind];

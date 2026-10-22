@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { trip } from './data/trip';
-import type { CategoryId, Currency } from './types';
-import { DAY_COLORS, amountsInJpy, buildModel, categoryOf, fmtAmounts, fmtDate, fmtMoney, fmtTime, sumByCurrency, toMin, walletOf, moveLabel, stationsLabel } from './lib/core';
-import { TripMap, type Inset } from './components/TripMap';
-import { Timeline } from './components/Timeline';
-import { CategoryBars, ExpenseList } from './components/Spending';
-import { MoneyFlow } from './components/MoneyFlow';
-import { Icon, type IconName } from './components/Icon';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pause, Play } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { trip } from '@/data/trip';
+import { DAY_COLORS, buildModel, fmtAmounts, fmtDate, fmtMoney, amountsInJpy, fmtTime, moveLabel, stationsLabel, sumByCurrency, toMin } from '@/lib/core';
+import { TripMap, type Inset } from '@/components/TripMap';
+import { Timeline } from '@/components/Timeline';
+import { MoneyView } from '@/components/Money';
 
 type Scope = 'all' | string; // 'all' or YYYY-MM-DD
 type View = 'trip' | 'money';
@@ -36,13 +39,9 @@ export default function App() {
   const [scope, setScope] = useState<Scope>('all');
   const [view, setView] = useState<View>('trip');
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
-  const [category, setCategory] = useState<CategoryId | null>(null);
-  const mobile = useMediaQuery('(max-width: 900px)');
+  const desktop = useMediaQuery('(min-width: 1024px)');
 
-  const events = useMemo(
-    () => (scope === 'all' ? model.events : model.events.filter((e) => e.day === scope)),
-    [model, scope],
-  );
+  const events = useMemo(() => (scope === 'all' ? model.events : model.events.filter((e) => e.day === scope)), [model, scope]);
   const range = useMemo(() => {
     const start = events[0]?.start ?? model.start;
     const lastEnd = events[events.length - 1]?.end ?? model.end;
@@ -78,20 +77,11 @@ export default function App() {
   const activeEvent = model.eventAt(playhead);
 
   // ---- 集計 ----
-  const scopedExpenses = useMemo(
-    () => (scope === 'all' ? trip.expenses : trip.expenses.filter((e) => e.at.startsWith(scope))),
-    [scope],
-  );
-  // 支払った通貨ごとに集計する（換算はあくまで参考）
+  const scopedExpenses = useMemo(() => (scope === 'all' ? trip.expenses : trip.expenses.filter((e) => e.at.startsWith(scope))), [scope]);
   const totals = sumByCurrency(scopedExpenses);
-  const totalJpy = amountsInJpy(trip, totals);
-  const walletsUsed = (cur: Currency) =>
-    [...new Set(scopedExpenses.filter((e) => e.currency === cur).map((e) => walletOf(trip, e.payment)?.name).filter(Boolean))].join('・');
   const moves = events.flatMap((e) => (e.kind === 'move' ? [e.move] : []));
   const groundKm = moves.filter((m) => m.mode !== 'flight').reduce((s, m) => s + model.moveKm(m), 0);
-  const walkKm = moves.filter((m) => m.mode === 'walk').reduce((s, m) => s + model.moveKm(m), 0);
   const placeCount = new Set(events.flatMap((e) => (e.kind === 'visit' ? [e.visit.placeId] : []))).size;
-  const dayN = scope === 'all' ? 0 : model.days.indexOf(scope) + 1;
 
   const selectPlace = (id: string) => setSelectedPlaceId((cur) => (cur === id ? null : id));
   const seek = (t: number) => {
@@ -99,7 +89,7 @@ export default function App() {
     setPlaying(false);
   };
 
-  // ツールバーの高さ（日見出しをその下に貼り付けるため）
+  // ツールバーの高さ（地図カードをその下に貼り付けるため）
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarH, setToolbarH] = useState(64);
   useEffect(() => {
@@ -117,179 +107,160 @@ export default function App() {
         ? [moveLabel(activeEvent.move), stationsLabel(activeEvent.move)].filter(Boolean).join('　')
         : '';
 
+  const stats = [
+    { label: scope === 'all' ? '期間' : '日付', value: scope === 'all' ? `${model.days.length}日間` : fmtDate(toMin(scope)) },
+    { label: '訪れた場所', value: `${placeCount}か所` },
+    { label: '移動（飛行機を除く）', value: `${groundKm.toFixed(1)}km` },
+    { label: '支出', value: fmtAmounts(totals), sub: `≈ ${fmtMoney(amountsInJpy(trip, totals), 'JPY')}` },
+  ];
+
   return (
-    <div className="app" style={{ ['--toolbar-h' as string]: `${toolbarH}px` }}>
-      <header className="hero">
-        <p className="eyebrow">
-          {fmtDate(toMin(trip.startDate))} – {fmtDate(toMin(trip.endDate))}
-          {trip.subtitle && <span className="badge">{trip.subtitle}</span>}
-        </p>
-        <h1>{trip.title}</h1>
-
-        <div className="stats">
-          <Stat
-            icon="calendar"
-            label={scope === 'all' ? '期間' : `${dayN}日目`}
-            value={scope === 'all' ? `${model.days.length}日間` : fmtDate(toMin(scope))}
-            accent={scope === 'all' ? undefined : DAY_COLORS[dayN - 1]}
-          />
-          <Stat icon="pin" label="訪れた場所" value={`${placeCount}か所`} />
-          <Stat icon="route" label="移動距離" value={`${groundKm.toFixed(1)}km`} sub={walkKm > 0 ? `うち徒歩 ${walkKm.toFixed(1)}km・飛行機を除く` : '飛行機を除く'} />
-          <Stat icon="wallet" label="支出" value={fmtAmounts(totals)} sub={`円にすると ≈ ${fmtMoney(totalJpy, 'JPY')}`} />
-        </div>
-      </header>
-
-      <div className="toolbar" ref={toolbarRef}>
-        <nav className="seg days" aria-label="日程">
-          <button aria-pressed={scope === 'all'} onClick={() => setScope('all')}>
-            ぜんぶ
-          </button>
-          {model.days.map((d, i) => (
-            <button key={d} aria-pressed={scope === d} onClick={() => setScope(d)} style={{ ['--day' as string]: DAY_COLORS[i] }}>
-              <span className="day-n">{i + 1}日目</span>
-              <span className="day-date">{fmtDate(toMin(d)).replace(/（.）/, '')}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="seg view-tabs" role="tablist">
-          <button role="tab" aria-selected={view === 'trip'} onClick={() => setView('trip')}>
-            旅程
-          </button>
-          <button role="tab" aria-selected={view === 'money'} onClick={() => setView('money')}>
-            お金
-          </button>
-        </div>
-      </div>
-
-      <div className="layout">
-        <main className="content">
-          {view === 'trip' ? (
-            <Timeline
-              model={model}
-              events={events}
-              activeEventId={activeEvent?.id ?? null}
-              selectedPlaceId={selectedPlaceId}
-              onSelectPlace={selectPlace}
-              onSeek={seek}
-              autoScroll={playing && !mobile}
-            />
-          ) : (
-            <div className="money-view">
-              <section className="card">
-                <div className="totals">
-                  {(['KRW', 'JPY'] as const).map(
-                    (c) =>
-                      totals[c] != null && (
-                        <div key={c} className="total">
-                          <div className="total-label">{c === 'KRW' ? 'ウォンで払った' : '円で払った'}</div>
-                          <div className="big-number num">{fmtMoney(totals[c]!, c)}</div>
-                          <div className="big-sub">{walletsUsed(c)}</div>
-                        </div>
-                      ),
-                  )}
-                </div>
-                <p className="big-note num">
-                  円にするとあわせて ≈ {fmtMoney(totalJpy, 'JPY')}（₩100 = ¥{(trip.fx.KRW * 100).toFixed(2)}）
-                </p>
-              </section>
-
-              <section className="card">
-                <h2>何に使った？</h2>
-                <CategoryBars
-                  model={model}
-                  expenses={scopedExpenses}
-                  active={category}
-                  onToggle={(c) => setCategory((cur) => (cur === c ? null : c))}
-                />
-              </section>
-
-              <section className="card">
-                <h2>お財布</h2>
-                <MoneyFlow model={model} />
-              </section>
-
-              <section className="card">
-                <h2>
-                  支払いの記録
-                  {category && (
-                    <button className="chip" onClick={() => setCategory(null)}>
-                      {categoryOf(category).label}だけ表示中 ✕
-                    </button>
-                  )}
-                </h2>
-                <ExpenseList
-                  model={model}
-                  expenses={category ? scopedExpenses.filter((e) => e.category === category) : scopedExpenses}
-                  onSelectPlace={selectPlace}
-                />
-              </section>
-
-              <p className="credit">
-                レート ₩100 = ¥{(trip.fx.KRW * 100).toFixed(2)}（仁川での両替実績）
-              </p>
-            </div>
-          )}
-        </main>
-
-        <aside className="map-card" aria-label="地図">
-          <TripMap
-            model={model}
-            events={events}
-            selectedPlaceId={selectedPlaceId}
-            onSelectPlace={selectPlace}
-            playhead={playhead}
-            follow={playing}
-            inset={NO_INSET}
-          />
-
-          <div className="player">
-            <button
-              className="play"
-              onClick={() => {
-                if (playhead >= range.end) setPlayhead(range.start);
-                setPlaying((p) => !p);
-              }}
-              aria-label={playing ? '一時停止' : '再生'}
-            >
-              {playing ? '❚❚' : '▶'}
-            </button>
-            <div className="player-main">
-              <div className="player-meta">
-                <span className="num player-time">
-                  {fmtDate(playhead)} {fmtTime(playhead)}
-                </span>
-                <span className="ellipsis">{nowLabel}</span>
+    <TooltipProvider>
+      <div className="min-h-svh" style={{ ['--toolbar-h' as string]: `${toolbarH}px` }}>
+        <header className="mx-auto max-w-6xl px-5 pt-12 pb-10 sm:px-8 sm:pt-20">
+          <p className="flex flex-wrap items-center gap-3 text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+            Seoul · {trip.startDate.replaceAll('-', '.')} — {trip.endDate.slice(5).replace('-', '.')}
+            {trip.subtitle && (
+              <Badge variant="outline" className="tracking-normal normal-case">
+                {trip.subtitle}
+              </Badge>
+            )}
+          </p>
+          <h1 className="mt-4 text-5xl font-bold tracking-tight sm:text-7xl">{trip.title}</h1>
+          <dl className="mt-10 grid grid-cols-2 gap-x-8 gap-y-6 border-t pt-6 lg:grid-cols-4">
+            {stats.map((s) => (
+              <div key={s.label}>
+                <dt className="text-xs text-muted-foreground">{s.label}</dt>
+                <dd className="mt-1 text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">{s.value}</dd>
+                {s.sub && <dd className="text-xs text-muted-foreground tabular-nums">{s.sub}</dd>}
               </div>
-              <input
-                type="range"
-                min={range.start}
-                max={range.end}
-                value={playhead}
-                onChange={(e) => seek(Number(e.target.value))}
-                aria-label="時刻"
-              />
-            </div>
-            <button className="speed" onClick={() => setSpeed((s) => (s + 1) % SPEEDS.length)} aria-label="再生速度">
-              {SPEEDS[speed].label}
-            </button>
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
-}
+            ))}
+          </dl>
+        </header>
 
-function Stat({ icon, label, value, sub, accent }: { icon: IconName; label: string; value: ReactNode; sub?: ReactNode; accent?: string }) {
-  return (
-    <div className="stat">
-      <div className="stat-label">
-        <span className="stat-icon" style={accent ? { color: accent } : undefined}>
-          <Icon name={icon} size={14} />
-        </span>
-        {label}
+        <div ref={toolbarRef} className="sticky top-0 z-[1100] border-y bg-background/85 backdrop-blur-md">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3 sm:px-8">
+            <ToggleGroup
+              type="single"
+              value={scope}
+              onValueChange={(v) => v && setScope(v)}
+              variant="outline"
+              size="sm"
+              className="max-w-full flex-wrap"
+              aria-label="日程"
+            >
+              <ToggleGroupItem value="all">ぜんぶ</ToggleGroupItem>
+              {model.days.map((d, i) => (
+                <ToggleGroupItem key={d} value={d} className="gap-1.5">
+                  <span className="size-2 rounded-full" style={{ background: DAY_COLORS[i] }} />
+                  {i + 1}日目
+                  <span className="hidden text-xs text-muted-foreground sm:inline">{fmtDate(toMin(d)).replace(/（.）/, '')}</span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+              <TabsList>
+                <TabsTrigger value="trip" className="px-3">
+                  旅程
+                </TabsTrigger>
+                <TabsTrigger value="money" className="px-3">
+                  お金
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 pt-8 pb-24 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
+          <aside
+            aria-label="地図"
+            className="lg:sticky lg:top-[calc(var(--toolbar-h)+1.5rem)] lg:order-2 lg:self-start"
+          >
+            <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+              <div className="h-72 sm:h-96 lg:h-[calc(100svh-var(--toolbar-h)-9rem)]">
+                <TripMap
+                  model={model}
+                  events={events}
+                  selectedPlaceId={selectedPlaceId}
+                  onSelectPlace={selectPlace}
+                  playhead={playhead}
+                  follow={playing}
+                  inset={NO_INSET}
+                />
+              </div>
+              <div className="flex items-center gap-3 border-t px-3 py-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (playhead >= range.end) setPlayhead(range.start);
+                    setPlaying((p) => !p);
+                  }}
+                  aria-label={playing ? '一時停止' : '再生'}
+                  className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+                >
+                  {playing ? <Pause className="size-4 fill-current" /> : <Play className="ml-0.5 size-4 fill-current" />}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className="flex gap-2 text-xs">
+                    <span className="font-semibold whitespace-nowrap tabular-nums">
+                      {fmtDate(playhead)} {fmtTime(playhead)}
+                    </span>
+                    <span className="truncate text-muted-foreground">{nowLabel}</span>
+                  </p>
+                  <input
+                    type="range"
+                    min={range.start}
+                    max={range.end}
+                    value={playhead}
+                    onChange={(e) => seek(Number(e.target.value))}
+                    aria-label="時刻"
+                    className="mt-1 block w-full accent-foreground"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSpeed((s) => (s + 1) % SPEEDS.length)}
+                  aria-label="再生速度"
+                  className={cn('rounded-full bg-muted px-2.5 py-1 text-xs font-semibold tabular-nums transition hover:bg-accent')}
+                >
+                  {SPEEDS[speed].label}
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          <main className="min-w-0 lg:order-1">
+            {view === 'trip' ? (
+              <>
+                <Timeline
+                  model={model}
+                  events={events}
+                  activeEventId={activeEvent?.id ?? null}
+                  selectedPlaceId={selectedPlaceId}
+                  onSelectPlace={selectPlace}
+                  onSeek={seek}
+                  autoScroll={playing && desktop}
+                />
+                {trip.apps && trip.apps.length > 0 && (
+                  <section className="mt-16 border-t pt-8">
+                    <h2 className="text-sm font-semibold text-muted-foreground">旅で使ったアプリ</h2>
+                    <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                      {trip.apps.map((a) => (
+                        <li key={a.name}>
+                          <p className="font-semibold">{a.name}</p>
+                          <p className="text-sm text-muted-foreground">{a.note}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </>
+            ) : (
+              <MoneyView model={model} expenses={scopedExpenses} onSelectPlace={selectPlace} />
+            )}
+          </main>
+        </div>
       </div>
-      <div className="stat-value num">{value}</div>
-      {sub && <div className="stat-sub">{sub}</div>}
-    </div>
+    </TooltipProvider>
   );
 }

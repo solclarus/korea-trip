@@ -134,6 +134,20 @@ export interface Expense {
   memo?: string;
 }
 
+/** 写真。public/photos/ に置いたファイルを src で指す（例: 'photos/IMG_1924.jpg'） */
+export interface Photo {
+  id: string;
+  src: string;
+  /** 撮影日時。滞在の時間内なら、その滞在に自動で紐づく */
+  at?: string;
+  /** 撮った場所（placeId）。指定があれば時間より優先して紐づける */
+  placeId?: string;
+  caption?: string;
+  /** 撮影位置（EXIF） */
+  lat?: number;
+  lng?: number;
+}
+
 export interface Trip {
   title: string;
   subtitle?: string;
@@ -143,6 +157,8 @@ export interface Trip {
   fx: Record<Currency, number>;
   /** 旅で使ったアプリ（記念に記録） */
   apps?: { name: string; note: string }[];
+  /** 写真（なくてもよい） */
+  photos?: Photo[];
   wallets: Wallet[];
   transfers: Transfer[];
   places: Place[];
