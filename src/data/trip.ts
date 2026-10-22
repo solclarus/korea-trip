@@ -10,6 +10,8 @@ import type { Trip } from '../types';
 //   - 写真：エムブロトンカツ新村店の外観、緑の支線バス、西大門刑務所歴史館のチケット（10/16 14:51・大人2名）、
 //     夕方の光化門、夜の清渓川、ドェボンの盛り合わせ
 //   - 10/16 午後：景福宮 → 南へ歩いて清渓川 → 乙支路入口から2号線で新林（本人の申告。T-money 18:29〜19:10 の乗車）
+//   - WOWPASS アプリの「グルメ旅行」（10/15）：ミョンヒョンマン カンジャンケジャン（양화로 45・₩44,800・★5「Good」）、
+//     GS25 梨泰院ヒル店（₩4,000・★5）。合井 → 梨泰院の移動（T-money 18:27〜18:54）は推定
 //   - 帰りのリムジンバス 6017（新林の8番乗り場 → 仁川空港、T-money ₩17,000）
 //   - 現地で使ったアプリ：WOWPASS、NAVER マップ
 //   - 宿：1泊目 HOTEL LaNuit（新村〜梨大の間）、2泊目 HOTEL YAJA（新林。正確な位置は未確定）。どちらも友人が予約
@@ -41,7 +43,7 @@ export const trip: Trip = {
     { id: 't2', at: '2026-10-15T14:50', from: 'cash-jpy', sent: 20000, to: 'cash-krw', received: 158730, placeId: 'icn-t2', note: '両替（₩793.69 / ¥100 で ₩158,738。端数の ₩8 は受け取れず・時刻は推定）' },
     { id: 't2b', at: '2026-10-15T15:00', from: 'cash-krw', to: 'wowpass', received: 150000, placeId: 'icn-t2', note: 'WOWPASS を発行して現金 ₩150,000 をチャージ（時刻は推定）' },
     { id: 't3', at: '2026-10-15T16:48', from: 'wowpass', to: 'tmoney', received: 20000, placeId: 'hapjeong', note: 'T-moneyにチャージ（手数料 ₩500 は別計上）' },
-    { id: 't4', at: '2026-10-15T18:29', source: 'キャッシュバック', to: 'wowpass', received: 5, note: 'レビュー投稿キャッシュバック' },
+    { id: 't4', at: '2026-10-15T18:29', source: 'キャッシュバック', to: 'wowpass', received: 5, note: 'レビュー投稿キャッシュバック（カンジャンケジャンのレビュー）' },
     { id: 't5', at: '2026-10-15T22:08', from: 'cash-jpy', sent: 20000, to: 'wowpass', received: 167684, note: '¥20,000 を WOWPASS に残高チャージ（₩838.42 / ¥100）。チャージ後の残高 ₩173,289' },
     { id: 't6', at: '2026-10-15T22:10', source: 'キャッシュバック', to: 'wowpass', received: 838, note: '招待・両替キャッシュバック' },
     { id: 't7', at: '2026-10-16T13:39', source: 'キャッシュバック', to: 'wowpass', received: 115, note: 'レビュー投稿キャッシュバック（4件）' },
@@ -53,6 +55,8 @@ export const trip: Trip = {
     { id: 'icn-t2', name: '仁川空港 第2ターミナル', nameEn: 'Incheon Airport Terminal 2', nameKo: '인천공항 제2터미널', lat: 37.469, lng: 126.4337, area: '仁川' },
     { id: 'icn-t1', name: '仁川空港 第1ターミナル', nameEn: 'Incheon Airport Terminal 1', nameKo: '인천공항 제1터미널', lat: 37.4492, lng: 126.4508, area: '仁川' },
     { id: 'hapjeong', name: '合井', nameEn: 'Hapjeong', nameKo: '합정', lat: 37.5496, lng: 126.9139, area: '麻浦' },
+    { id: 'myunghyunman', name: 'ミョンヒョンマン カンジャンケジャン食べ放題', nameEn: 'Myunghyunman Soy Sauce Crab Unlimited Refill', nameKo: '명현만 간장게장 무한리필', lat: 37.55024, lng: 126.91396, area: '麻浦' },
+    { id: 'gs25-itaewon-hill', name: 'GS25 梨泰院ヒル店（位置は仮）', nameEn: 'GS25 Itaewon Hill Branch', nameKo: 'GS25 이태원힐점', lat: 37.5345, lng: 126.9946, area: '龍山（未確定）' },
     { id: 'rest-sinchon', name: 'バー「レスト」（新村）', nameEn: 'Rest (Sinchon)', nameKo: '레스트', lat: 37.55844, lng: 126.93643, area: '西大門' },
     { id: 'mbro-sinchon', name: 'エムブロトンカツ 新村店', nameEn: 'Mbro Donkatsu (Sinchon)', nameKo: '엠브로돈까스 신촌점', lat: 37.55789, lng: 126.93826, area: '西大門' },
     { id: 'seodaemun-prison', name: '西大門刑務所歴史館', nameEn: 'Seodaemun Prison History Hall', nameKo: '서대문형무소역사관', lat: 37.57454, lng: 126.95632, area: '西大門' },
@@ -69,7 +73,9 @@ export const trip: Trip = {
     // Day 1
     { id: 'v1', placeId: 'nrt-t1', arrive: '2026-10-15T10:00', depart: '2026-10-15T11:46', estimated: true, note: '南ウイング・43番ゲートから出発。' },
     { id: 'v2', placeId: 'icn-t2', arrive: '2026-10-15T14:28', depart: '2026-10-15T15:45', estimated: true, note: '8分遅れで到着（285番ゲート・ターンテーブル17）。¥20,000 を両替して WOWPASS を作り、空港鉄道のきっぷを現金で購入。' },
-    { id: 'v2b', placeId: 'hapjeong', arrive: '2026-10-15T16:45', depart: '2026-10-15T18:27', estimated: true, note: '弘大入口で2号線に乗り換えて到着。' },
+    { id: 'v2b', placeId: 'hapjeong', arrive: '2026-10-15T16:45', depart: '2026-10-15T17:00', estimated: true, note: '弘大入口で2号線に乗り換えて到着。駅で T-money にチャージ。' },
+    { id: 'v2c', placeId: 'myunghyunman', arrive: '2026-10-15T17:05', depart: '2026-10-15T18:25', estimated: true, rating: 5, note: '合井駅そば（양화로 45）のカンジャンケジャン食べ放題。レビューは「Good」。' },
+    { id: 'v2d', placeId: 'gs25-itaewon-hill', arrive: '2026-10-15T19:30', depart: '2026-10-15T19:45', estimated: true, rating: 5, note: '梨泰院のコンビニ。正確な位置は未確定。' },
     // Day 2
     { id: 'v6', placeId: 'rest-sinchon', arrive: '2026-10-16T00:30', depart: '2026-10-16T02:20', estimated: true, note: '新村・延世路のバー（3階）。ハイボールを18杯。' },
     { id: 'v6h', placeId: 'hotel-lanuit', arrive: '2026-10-16T02:30', depart: '2026-10-16T12:30', estimated: true, note: '1泊目（友人が予約）。' },
@@ -90,6 +96,8 @@ export const trip: Trip = {
     { id: 'm1', from: 'nrt-t1', to: 'icn-t2', depart: '2026-10-15T11:46', arrive: '2026-10-15T14:28', mode: 'flight', line: 'エアソウル RS706・座席 28A' },
     { id: 'm1b', from: 'icn-t2', to: 'hapjeong', depart: '2026-10-15T15:45', arrive: '2026-10-15T16:45', mode: 'train', line: '空港鉄道 AREX（一般）→ 弘大入口 → 2号線', estimated: true,
       rail: [{ relation: 7919000, from: '인천공항2터미널', to: '홍대입구' }, { relation: 4729409, from: '홍대입구', to: '합정' }] },
+    { id: 'm1c', from: 'hapjeong', to: 'myunghyunman', depart: '2026-10-15T17:00', arrive: '2026-10-15T17:05', mode: 'walk', estimated: true },
+    { id: 'm1d', from: 'myunghyunman', to: 'gs25-itaewon-hill', depart: '2026-10-15T18:27', arrive: '2026-10-15T19:00', mode: 'subway', line: '6号線？（合井 → 梨泰院・路線は推定。下車は 18:54）', estimated: true },
     { id: 'm2h', from: 'rest-sinchon', to: 'hotel-lanuit', depart: '2026-10-16T02:20', arrive: '2026-10-16T02:30', mode: 'walk', estimated: true },
     { id: 'm2i', from: 'hotel-lanuit', to: 'mbro-sinchon', depart: '2026-10-16T12:30', arrive: '2026-10-16T12:45', mode: 'walk', estimated: true },
     { id: 'm3a', from: 'mbro-sinchon', to: 'seodaemun-prison', depart: '2026-10-16T14:00', arrive: '2026-10-16T14:30', mode: 'bus', line: '緑の支線バス（番号不明）', estimated: true },
@@ -115,9 +123,9 @@ export const trip: Trip = {
     { id: 'a1', at: '2026-10-15T15:38', amount: 5450, currency: 'KRW', category: 'transport', item: '空港鉄道 きっぷ（仁川空港T2 → ソウル駅）', payment: 'cash-krw', moveId: 'm1b', memo: '領収書あり。弘大入口で降りて2号線で合井へ' },
     { id: 'a2', at: '2026-10-15T15:38', amount: 500, currency: 'KRW', category: 'fee', item: 'きっぷの保証金', payment: 'cash-krw', moveId: 'm1b', memo: '駅の払い戻し機で返金されていれば不要' },
     { id: 'w2', at: '2026-10-15T16:48', amount: 500, currency: 'KRW', category: 'fee', item: 'T-moneyチャージ手数料', payment: 'wowpass', placeId: 'hapjeong' },
-    { id: 'w3', at: '2026-10-15T18:23', amount: 44800, currency: 'KRW', category: 'food', item: '飲食店', payment: 'wowpass' },
-    { id: 'r1', at: '2026-10-15T18:27', endAt: '2026-10-15T18:54', amount: 1550, currency: 'KRW', category: 'transport', item: '地下鉄・バス', payment: 'tmoney' },
-    { id: 'w4', at: '2026-10-15T19:40', amount: 4000, currency: 'KRW', category: 'shopping', item: 'コンビニ', payment: 'wowpass' },
+    { id: 'w3', at: '2026-10-15T18:23', amount: 44800, currency: 'KRW', category: 'food', item: 'カンジャンケジャン食べ放題', payment: 'wowpass', placeId: 'myunghyunman' },
+    { id: 'r1', at: '2026-10-15T18:27', endAt: '2026-10-15T18:54', amount: 1550, currency: 'KRW', category: 'transport', item: '地下鉄', payment: 'tmoney', moveId: 'm1d', memo: '乗車 18:27 → 下車 18:54' },
+    { id: 'w4', at: '2026-10-15T19:40', amount: 4000, currency: 'KRW', category: 'shopping', item: 'GS25', payment: 'wowpass', placeId: 'gs25-itaewon-hill' },
     { id: 'r2', at: '2026-10-15T19:50', endAt: '2026-10-15T20:14', amount: 1550, currency: 'KRW', category: 'transport', item: '地下鉄・バス', payment: 'tmoney' },
     { id: 'w5', at: '2026-10-15T21:12', amount: 69100, currency: 'KRW', category: 'other', item: '支払い（明細の分類は「一般」）', payment: 'wowpass' },
 
